@@ -1,0 +1,29 @@
+{
+  "name": "watcherr",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "varlock run --no-redact-stdout -- bun src/index.ts",
+    "dev:watch": "varlock run -- bun --watch src/index.ts",
+    "dev:email": "email dev --dir ./src --port 3003",
+    "docker:up": "varlock run --no-redact-stdout -- docker compose up"
+  },
+  "devDependencies": {
+    "@react-email/ui": "6.0.5",
+    "@types/bun": "latest",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@t3-oss/env-core": "^0.13.11",
+    "react": "^19.2.5",
+    "react-email": "^6.0.5",
+    "resend": "^6.12.2",
+    "varlock": "^1.1.0",
+    "zod": "^4.3.6"
+  }
+}
