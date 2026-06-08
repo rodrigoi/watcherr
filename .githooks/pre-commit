@@ -1,0 +1,26 @@
+#!/bin/sh
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "  ∎ pre-commit: branch = $BRANCH"
+
+if [ "$BRANCH" != "main" ]; then
+  echo "  ∎ pre-commit: skipping (not on main)"
+  exit 0
+fi
+
+CURRENT=$(node -p "require('./package.json').version || '0.0.0'")
+echo "  ∎ pre-commit: current version = $CURRENT"
+
+IFS='.' read -r major minor patch <<< "$CURRENT"
+NEW_VERSION="$major.$minor.$((patch + 1))"
+
+node -e "
+  const fs = require('fs');
+  const pkg = JSON.parse(fs.readFileSync('package.json'));
+  pkg.version = '$NEW_VERSION';
+  fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
+
+echo "  ∎ pre-commit: bumped → $NEW_VERSION"
+
+git add package.json
+echo "  ∎ pre-commit: staged package.json"
