@@ -3,10 +3,8 @@ name: Publish Docker Image
 on:
   push:
     branches: ["main"]
-    tags: ["v*"]
 
 permissions:
-  packages: write
   contents: write
 
 jobs:
@@ -18,54 +16,48 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Bump version on main
-        if: github.ref == 'refs/heads/main'
+      - name: Bump and tag version
         id: version
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           CURRENT=$(node -p "require('./package.json').version || '0.0.0'")
-          IFS='.' read -r major minor patch <<< "$CURRENT"
-          NEW_VERSION="$major.$minor.$((patch + 1))"
+          TAG="v$CURRENT"
 
-          node -e "
-            const fs = require('fs');
-            const pkg = JSON.parse(fs.readFileSync('package.json'));
-            pkg.version = '$NEW_VERSION';
-            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
-          "
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            IFS='.' read -r major minor patch <<< "$CURRENT"
+            NEW_VERSION="$major.$minor.$((patch + 1))"
 
-          git add package.json
-          git commit -m "chore: bump version to $NEW_VERSION [skip ci]"
-          git tag "v$NEW_VERSION"
-          git push origin main --follow-tags
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json'));
+              pkg.version = '$NEW_VERSION';
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
 
-          echo "TAG=v$NEW_VERSION" >> $GITHUB_OUTPUT
+            git add package.json
+            git commit --amend --no-edit
+            git push origin main --force-with-lease
 
-      - name: Use existing tag
-        if: github.ref_type == 'tag'
-        id: existingtag
-        run: echo "TAG=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-
-      - name: Set image tag
-        id: imagetag
-        run: |
-          if [ -n "${{ steps.version.outputs.TAG }}" ]; then
-            echo "TAG=${{ steps.version.outputs.TAG }}" >> $GITHUB_OUTPUT
-          else
-            echo "TAG=${{ steps.existingtag.outputs.TAG }}" >> $GITHUB_OUTPUT
+            TAG="v$NEW_VERSION"
           fi
+
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
 
       - uses: docker/login-action@v3
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: docker-registry.gandalfelgris.com.ar
+          username: ${{ secrets.CF_CLIENT_ID }}
+          password: ${{ secrets.CF_CLIENT_SECRET }}
 
       - uses: docker/build-push-action@v6
         with:
+          context: .
+          file: docker/Dockerfile
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ steps.imagetag.outputs.TAG }}
-            ghcr.io/${{ github.repository }}:latest
+            docker-registry.gandalfelgris.com.ar/watcherr:${{ steps.version.outputs.TAG }}
+            docker-registry.gandalfelgris.com.ar/watcherr:latest
