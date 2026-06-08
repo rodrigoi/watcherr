@@ -1,14 +1,14 @@
 {
   "name": "watcherr",
   "module": "index.ts",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "varlock run --no-redact-stdout -- bun src/index.ts",
     "dev:watch": "varlock run -- bun --watch src/index.ts",
     "dev:email": "email dev --dir ./src --port 3003",
-    "postinstall": "git config core.hooksPath .githooks",
+    "postinstall": "command -v git >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "docker:up": "varlock run --no-redact-stdout -- docker compose up --build"
   },
   "devDependencies": {
