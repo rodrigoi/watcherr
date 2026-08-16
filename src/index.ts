@@ -1,14 +1,10 @@
-import { INVALID_EXTENSIONS } from "@/constants";
-import { extractFileExtension } from "@/lib";
+import { extractFileExtension, isValidFile, log } from "@/lib";
 import { type Removal } from "@/notification";
 import { fetchTorrentFiles } from "@/qBittorrent/client";
 import { sendNotification } from "@/resend/client";
 import { fetchQueue, removeFromQueue } from "@/sonarr/client";
 
-const isValidFile = (path: string) =>
-  !(INVALID_EXTENSIONS as readonly string[]).includes(
-    extractFileExtension(path),
-  );
+log("------------------------------------------------------");
 
 const sonarrDownloads = await fetchQueue();
 
@@ -16,10 +12,16 @@ const sonarrDownloads = await fetchQueue();
  * bail early if there are no active downloads
  */
 if (sonarrDownloads.length === 0) {
-  console.log(new Date(), `total: ${sonarrDownloads.length}. exiting.`);
+  log("");
+  log(`Nothing to do, exiting.`);
+  log("------------------------------------------------------");
   process.exit(0);
 }
 
+/**
+ * for each download, check if it has a warning. Otherwise,
+ * download file list from QBT.
+ */
 const downloadsToRemove = (
   await Promise.all(
     sonarrDownloads.map(async (download): Promise<Removal | null> => {
@@ -33,6 +35,8 @@ const downloadsToRemove = (
         download.outputPath &&
         !isValidFile(download.outputPath)
       ) {
+        log(`Possible completed download: "${download.title}"`);
+
         return {
           item: download,
           triggeringFile: download.outputPath,
@@ -54,6 +58,7 @@ const downloadsToRemove = (
       const invalidFile = torrentFiles.find((path) => !isValidFile(path));
 
       if (invalidFile) {
+        log(`Invalid file found for "${download.title}".`);
         return {
           item: download,
           triggeringFile: invalidFile,
@@ -61,6 +66,7 @@ const downloadsToRemove = (
         };
       }
 
+      log(`File is valid for "${download.title}".`);
       return null;
     }),
   )
@@ -68,14 +74,20 @@ const downloadsToRemove = (
 
 const idsToRemove = downloadsToRemove.map((d) => d.item.id);
 
-console.log(
-  new Date(),
-  `total: ${sonarrDownloads.length} | items with warning: ${downloadsToRemove.length}`,
+log(
+  `Download count: ${sonarrDownloads.length} | Items to remove: ${downloadsToRemove.length}`,
 );
-console.log(new Date(), "ids to block:", idsToRemove);
-
-await sendNotification(downloadsToRemove);
 
 if (idsToRemove.length > 0) {
+  /**
+   * bulk remove all the downloads from the queue via Sonarr
+   */
   await removeFromQueue(idsToRemove);
+
+  /**
+   * send email notification of the removal
+   */
+  await sendNotification(downloadsToRemove);
 }
+
+log("------------------------------------------------------");
