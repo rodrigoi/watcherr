@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+// Each entru in GET /api/v2/torrents/info?category={category}
+export const QBittorrentItemInfoSchema = z.object({
+  name: z.string(),
+  hash: z.string(),
+});
+
+export const QBittorrentItemsInfoSchema = z.array(QBittorrentItemInfoSchema);
+
+export type QBittorrentItems = z.infer<typeof QBittorrentItemsInfoSchema>;
+
 // Each entry in GET /api/v2/torrents/files?hash={hash}
 export const QBittorrentFileSchema = z.object({
   // Relative path within the torrent, e.g. "Show.S01E01/Show.S01E01.exe"

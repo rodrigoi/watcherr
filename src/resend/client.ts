@@ -1,12 +1,12 @@
 import { env } from "@/env";
 import { log } from "@/lib";
-import Notification, { type Removal, getSubject } from "@/notification";
+import Notification, { type RemovedItem, getSubject } from "@/notification";
 import { Resend } from "resend";
 
 export const resend = new Resend(env.RESEND_API_KEY);
 
 export const sendNotification = async (
-  removedDownloads: Removal[],
+  removedDownloads: RemovedItem[],
 ): Promise<void> => {
   log(
     `Sending email notification for ${removedDownloads.length} removed downloads.`,

@@ -10,17 +10,17 @@ import {
   Text,
 } from "react-email";
 
-import type { SonarrQueueItem } from "@/schemas";
-
-export type Removal = {
-  item: SonarrQueueItem;
+export type RemovedItem = {
+  hash: string;
+  title: string | null;
   triggeringFile: string;
-  extension: string;
+  extension?: string;
+  zombie: boolean;
 };
 
-type NotificationProps = { removedDownloads: Removal[] };
+type NotificationProps = { removedDownloads: RemovedItem[] };
 
-export const getSubject = (removedDownloads: Removal[]): string =>
+export const getSubject = (removedDownloads: RemovedItem[]): string =>
   `[watcherr] removed ${removedDownloads.length} dangerous ${removedDownloads.length === 1 ? "download" : "downloads"}.`;
 
 export default function Notification({ removedDownloads }: NotificationProps) {
@@ -39,16 +39,23 @@ export default function Notification({ removedDownloads }: NotificationProps) {
         <Container>
           <Heading>{heading}</Heading>
           <Hr />
-          {removedDownloads.map(({ item, triggeringFile, extension }, i) => (
-            <Section key={item.id}>
-              <Text>
-                <strong>{item.title ?? "(untitled)"}</strong>
-              </Text>
-              <Text>Triggered by: {triggeringFile}</Text>
-              <Text>Reason: invalid file extension {extension}</Text>
-              {i < removedDownloads.length - 1 && <Hr />}
-            </Section>
-          ))}
+          {removedDownloads.map(
+            ({ hash, title, triggeringFile, extension, zombie }, i) => (
+              <Section key={hash}>
+                <Text>
+                  <strong>{title ?? "(untitled)"}</strong>
+                </Text>
+                <Text>Triggered by: {triggeringFile}</Text>
+                {zombie ? (
+                  <Text>Reason: zombie download</Text>
+                ) : (
+                  <Text>Reason: invalid file extension {extension}</Text>
+                )}
+
+                {i < removedDownloads.length - 1 && <Hr />}
+              </Section>
+            ),
+          )}
         </Container>
       </Body>
     </Html>
@@ -58,26 +65,25 @@ export default function Notification({ removedDownloads }: NotificationProps) {
 Notification.PreviewProps = {
   removedDownloads: [
     {
-      item: {
-        id: 101,
-        title: "Some.Show.S01E03.1080p.WEB-DL",
-        trackedDownloadStatus: "warning",
-        statusMessages: [],
-        downloadId: "abc123",
-        outputPath: "/downloads/Some.Show.S01E03/installer.exe",
-      },
+      hash: "this-is-a-hash",
+      title: "Some.Show.S01E03.1080p.WEB-DL",
       triggeringFile: "Some.Show.S01E03/installer.exe",
       extension: ".exe",
+      zombie: false,
     },
     {
-      item: {
-        id: 102,
-        title: null,
-        trackedDownloadStatus: "warning",
-        statusMessages: [],
-      },
+      hash: "this-is-another-hash",
+      title: null,
       triggeringFile: "readme.scr",
       extension: ".scr",
+      zombie: false,
+    },
+    {
+      hash: "this-is-a-zombie-hash",
+      title: null,
+      triggeringFile: "readme.scr",
+      extension: ".scr",
+      zombie: true,
     },
   ],
 } satisfies NotificationProps;
